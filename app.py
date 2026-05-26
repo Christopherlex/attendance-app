@@ -3,8 +3,8 @@ import io
 from datetime import datetime, date, timezone, timedelta
 from functools import wraps
 
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 from flask import (
     Flask, render_template, request, redirect,
     url_for, session, jsonify, send_file, flash
@@ -30,14 +30,14 @@ def now_wib():
 # ─── DB helpers ───────────────────────────────────────────────────────────────
 
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg.connect(DATABASE_URL)
     return conn
 
 
 def query(sql, params=(), fetchone=False, fetchall=False, commit=False):
     conn = get_db()
     try:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(sql, params)
             if commit:
                 conn.commit()
@@ -348,7 +348,7 @@ def setup():
         return "Forbidden", 403
 
     conn = get_db()
-    with conn.cursor() as cur:
+    with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
