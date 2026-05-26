@@ -112,54 +112,6 @@ flask run
 # or
 python app.py
 ```
-
----
-
-## Deploy on Hostinger
-
-### Prerequisites
-- Hostinger VPS or Business/Cloud hosting plan with Python support
-- A subdomain pointed to your hosting
-
-### Steps
-
-1. **Upload files** via FTP or Hostinger File Manager to your subdomain's public folder (e.g. `public_html/attend.yourdomain.com/`).
-
-2. **Install Python dependencies** via SSH:
-   ```bash
-   cd ~/public_html/attend.yourdomain.com
-   pip install -r requirements.txt --user
-   ```
-
-3. **Create `.env`** in the same folder:
-   ```
-   DATABASE_URL=postgresql://...your_neon_url...?sslmode=require
-   SECRET_KEY=your-long-random-secret
-   SETUP_TOKEN=your-setup-token
-   ```
-
-4. **Set up tables** by visiting:
-   ```
-   https://attend.yourdomain.com/setup?token=your-setup-token
-   ```
-   You should see: `Tables created.`
-
-5. **Seed your first admin user** via Neon SQL editor (see above).
-
-6. **Visit** `https://attend.yourdomain.com` — login page should appear.
-
-### Hostinger Python App Configuration
-
-In Hostinger hPanel → **Websites** → **Manage** → **Advanced** → **Python**:
-
-- **Python version**: 3.10+
-- **Application root**: `/home/user/public_html/attend.yourdomain.com`
-- **Application URL**: your subdomain
-- **Application startup file**: `passenger_wsgi.py`
-- **Application entry point**: `application`
-
----
-
 ## Environment Variables
 
 | Variable | Description | Required |
