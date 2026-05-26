@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Indo Citra Attendance · Worker Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0f1f3d;
+      --navy-mid: #1a3260;
+      --blue: #2563eb;
+      --blue-light: #3b82f6;
+      --accent: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --white: #ffffff;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-400: #94a3b8;
+      --gray-600: #475569;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--gray-50);
+      font-family: 'Inter', sans-serif;
+      color: var(--navy);
+    }
+
+    /* Topbar */
+    .topbar {
+      background: var(--navy);
+      padding: 0 1.5rem;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .topbar-logo {
+      width: 30px; height: 30px;
+      object-fit: contain;
+    }
+    .topbar-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      color: var(--white);
+      line-height: 1.2;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-user {
+      font-size: 0.85rem; color: rgba(255,255,255,0.6);
+    }
+    .topbar-user span { color: var(--white); font-weight: 500; }
+    .btn-logout {
+      padding: 0.4rem 1rem;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: var(--white);
+      font-size: 0.8rem; font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+    /* Main */
+    .main { max-width: 600px; margin: 0 auto; padding: 2rem 1.25rem; }
+
+    .welcome {
+      margin-bottom: 2rem;
+    }
+    .welcome p { color: var(--gray-400); font-size: 0.9rem; }
+    .welcome h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.4rem; font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* Status card */
+    .status-card {
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1.5px solid transparent;
+      transition: all 0.3s;
+    }
+    .status-card.no-session {
+      background: var(--white);
+      border-color: var(--gray-200);
+    }
+    .status-card.has-session {
+      background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+      border-color: #a7f3d0;
+    }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600;
+      margin-bottom: 1rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .status-badge.active {
+      background: var(--green); color: var(--white);
+    }
+    .status-badge.inactive {
+      background: var(--gray-200); color: var(--gray-600);
+    }
+    .status-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+    }
+    .status-badge.active .dot { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-info h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 600;
+    }
+    .status-info p { color: var(--gray-600); font-size: 0.875rem; margin-top: 4px; }
+
+    .session-meta {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-top: 1rem;
+    }
+    .meta-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.875rem; color: var(--gray-600);
+    }
+    .meta-row svg { width: 14px; height: 14px; flex-shrink: 0; fill: var(--green); }
+    .meta-row strong { color: var(--navy); }
+
+    /* Form card */
+    .form-card {
+      background: var(--white);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .form-card h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    .field { margin-bottom: 1rem; }
+    .field label {
+      display: block;
+      font-size: 0.78rem; font-weight: 500;
+      color: var(--gray-600);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .field input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 0.95rem; font-family: 'Inter', sans-serif;
+      color: var(--navy);
+      background: var(--gray-50);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+      background: var(--white);
+    }
+
+    .gps-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; color: var(--gray-400);
+      margin-top: 0.5rem;
+    }
+    .gps-indicator svg { width: 12px; height: 12px; fill: var(--gray-400); }
+    .gps-indicator.acquired { color: var(--green); }
+    .gps-indicator.acquired svg { fill: var(--green); }
+
+    .btn-row { display: flex; gap: 0.75rem; }
+    .btn {
+      flex: 1;
+      padding: 0.85rem;
+      border: none; border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-checkin {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-checkin:not(:disabled):hover { background: var(--navy-mid); }
+
+    .btn-checkout {
+      background: var(--red);
+      color: var(--white);
+    }
+    .btn-checkout:not(:disabled):hover { background: #dc2626; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--navy);
+      color: var(--white);
+      padding: 0.8rem 1.5rem;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      z-index: 9999;
+      transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap;
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: var(--green); }
+    .toast.error { background: var(--red); }
+
+    /* Clock */
+    .clock-row {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .clock {
+      font-family: 'Inter', sans-serif;
+      font-size: 2rem; font-weight: 700;
+      color: var(--navy); letter-spacing: -0.5px;
+    }
+    .clock-date { color: var(--gray-400); font-size: 0.875rem; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-brand">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="topbar-logo"/>
+      <span class="topbar-name">Indo Citra<br/>Attendance</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user">Hello, <span>{{ session.full_name }}</span></span>
+      <a href="{{ url_for('logout') }}" class="btn-logout">Sign Out</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="welcome">
+      <p>Good to see you 👋</p>
+      <h1>{{ session.full_name }}</h1>
+    </div>
+
+    <div class="clock-row">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="clock-date" id="clock-date"></div>
+    </div>
+
+    <!-- Status card (dynamic) -->
+    <div class="status-card {% if open_session %}has-session{% else %}no-session{% endif %}" id="status-card">
+      <div class="status-badge {% if open_session %}active{% else %}inactive{% endif %}" id="status-badge">
+        <span class="dot"></span>
+        <span id="status-label">{% if open_session %}Checked In{% else %}Not Checked In{% endif %}</span>
+      </div>
+      <div class="status-info">
+        <h3 id="status-title">{% if open_session %}Session Active{% else %}No Active Session{% endif %}</h3>
+        <p id="status-sub">{% if open_session %}You are currently clocked in.{% else %}Check in to start your session.{% endif %}</p>
+      </div>
+      {% if open_session %}
+      <div class="session-meta" id="session-meta">
+        <div class="meta-row">
+          <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          Location: <strong id="session-loc">{{ open_session.location_name }}</strong>
+        </div>
+        <div class="meta-row">
+          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+          Checked in: <strong id="session-time">{{ open_session.checkin.strftime('%H:%M:%S') }}</strong>
+        </div>
+      </div>
+      {% else %}
+      <div class="session-meta" id="session-meta" style="display:none"></div>
+      {% endif %}
+    </div>
+
+    <!-- Form card -->
+    <div class="form-card">
+      <h3>Attendance Action</h3>
+      <div class="field">
+        <label for="location_name">Location Name</label>
+        <input type="text" id="location_name" placeholder="e.g. Head Office, Site A …" value="{% if open_session %}{{ open_session.location_name }}{% endif %}" {% if open_session %}readonly{% endif %}/>
+      </div>
+      <div class="gps-indicator" id="gps-status">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        <span id="gps-label">Acquiring GPS…</span>
+      </div>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button class="btn btn-checkin" id="btn-checkin" {% if open_session %}disabled{% endif %} onclick="doCheckin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+          Check In
+        </button>
+        <button class="btn btn-checkout" id="btn-checkout" {% if not open_session %}disabled{% endif %} onclick="doCheckout()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          Check Out
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let gpsCoords = null;
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+      document.getElementById('clock-date').textContent = now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // GPS
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          const el = document.getElementById('gps-status');
+          el.classList.add('acquired');
+          document.getElementById('gps-label').textContent =
+            `GPS ready: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}`;
+        },
+        err => {
+          document.getElementById('gps-label').textContent = 'GPS unavailable — proceeding without location';
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      document.getElementById('gps-label').textContent = 'GPS not supported by browser';
+    }
+
+    // Toast
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + type;
+      setTimeout(() => t.classList.add('show'), 10);
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    // Update UI after action
+    function refreshStatus() {
+      fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+          const card = document.getElementById('status-card');
+          const badge = document.getElementById('status-badge');
+          const label = document.getElementById('status-label');
+          const title = document.getElementById('status-title');
+          const sub = document.getElementById('status-sub');
+          const meta = document.getElementById('session-meta');
+          const locInput = document.getElementById('location_name');
+          const btnIn = document.getElementById('btn-checkin');
+          const btnOut = document.getElementById('btn-checkout');
+
+          if (data.has_open) {
+            card.className = 'status-card has-session';
+            badge.className = 'status-badge active';
+            label.textContent = 'Checked In';
+            title.textContent = 'Session Active';
+            sub.textContent = 'You are currently clocked in.';
+            meta.style.display = 'flex';
+            meta.innerHTML = `
+              <div class="meta-row">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#10b981"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                Location: <strong>${data.location}</strong>
+              </div>
+              <div class="meta-row">
+                <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#10b981"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                Checked in: <strong>${data.checkin}</strong>
+              </div>`;
+            locInput.value = data.location;
+            locInput.readOnly = true;
+            btnIn.disabled = true;
+            btnOut.disabled = false;
+          } else {
+            card.className = 'status-card no-session';
+            badge.className = 'status-badge inactive';
+            label.textContent = 'Not Checked In';
+            title.textContent = 'No Active Session';
+            sub.textContent = 'Check in to start your session.';
+            meta.style.display = 'none';
+            locInput.value = '';
+            locInput.readOnly = false;
+            btnIn.disabled = false;
+            btnOut.disabled = true;
+          }
+        });
+    }
+
+    async function doCheckin() {
+      const loc = document.getElementById('location_name').value.trim();
+      if (!loc) { showToast('Please enter a location name.', 'error'); return; }
+
+      const btnIn = document.getElementById('btn-checkin');
+      btnIn.disabled = true;
+      btnIn.textContent = 'Checking in…';
+
+      try {
+        const res = await fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ location_name: loc, lat: gpsCoords?.lat || null, lng: gpsCoords?.lng || null })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          refreshStatus();
+        } else {
+          showToast(data.error || 'Check-in failed.', 'error');
+          btnIn.disabled = false;
+        }
+      } catch {
+        showToast('Network error. Please try again.', 'error');
+        btnIn.disabled = false;
+      }
+      btnIn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg> Check In';
+    }
+
+    async function doCheckout() {
+      const btnOut = document.getElementById('btn-checkout');
+      btnOut.disabled = true;
+      btnOut.textContent = 'Checking out…';
+
+      try {
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat: gpsCoords?.lat || null, lng: gpsCoords?.lng || null })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          refreshStatus();
+        } else {
+          showToast(data.error || 'Check-out failed.', 'error');
+          btnOut.disabled = false;
+        }
+      } catch {
+        showToast('Network error. Please try again.', 'error');
+        btnOut.disabled = false;
+      }
+      btnOut.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> Check Out';
+    }
+  </script>
+</body>
+</html>
