@@ -349,10 +349,12 @@
               <th>Check-In</th>
               <th>Check-Out</th>
               <th>Duration</th>
+              <th>Work Summary</th>
               <th>Location</th>
               <th>GPS</th>
               <th>IP Address</th>
               <th>Status</th>
+              <th>Compliance</th>
             </tr>
           </thead>
           <tbody>
@@ -387,6 +389,7 @@
                   <span class="duration-open">—</span>
                 {% endif %}
               </td>
+              <td class="ip-text" style="max-width:240px; white-space:normal;">{{ r.work_summary or '—' }}</td>
               <td>{{ r.location_name }}</td>
               <td>
                 {% if r.checkin_lat and r.checkin_lng %}
@@ -414,6 +417,29 @@
                   <span class="badge badge-open">Active</span>
                 {% endif %}
               </td>
+              <td>
+                {% if is_compliance %}
+                  <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                    <input type="checkbox" class="compliance-checkbox" data-record-id="{{ r.id }}"
+                           {% if r.compliance %}checked{% endif %}
+                           onchange="toggleCompliance({{ r.id }}, this)"
+                           style="width:18px; height:18px; cursor:pointer;">
+                    <span class="compliance-label-{{ r.id }}">
+                      {% if r.compliance %}
+                        <span class="badge badge-done">Compliant</span>
+                      {% else %}
+                        <span class="badge badge-open">Pending</span>
+                      {% endif %}
+                    </span>
+                  </label>
+                {% else %}
+                  {% if r.compliance %}
+                    <span class="badge badge-done">✓ Compliant</span>
+                  {% else %}
+                    <span class="badge badge-open">Pending</span>
+                  {% endif %}
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -428,5 +454,34 @@
       {% endif %}
     </div>
   </div>
+  <script>
+    async function toggleCompliance(recordId, checkbox) {
+      const wrapper = checkbox.parentElement;
+      const labelSpan = wrapper.querySelector('.compliance-label-' + recordId);
+      const prevChecked = !checkbox.checked; // value before this change
+      checkbox.disabled = true;
+      try {
+        const res = await fetch(`/api/compliance/${recordId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ compliance: checkbox.checked })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          if (labelSpan) {
+            labelSpan.innerHTML = data.compliance
+              ? '<span class="badge badge-done">Compliant</span>'
+              : '<span class="badge badge-open">Pending</span>';
+          }
+        } else {
+          checkbox.checked = prevChecked;
+        }
+      } catch (e) {
+        checkbox.checked = prevChecked;
+      } finally {
+        checkbox.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>

@@ -72,12 +72,35 @@ def admin_required(f):
     return decorated
 
 
+def report_access_required(f):
+    """Allows both 'admin' and 'compliance' roles to view reports."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") not in ("admin", "compliance"):
+            return redirect(url_for("worker_dashboard"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def compliance_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        if session.get("role") != "compliance":
+            return jsonify({"error": "Forbidden"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/", methods=["GET", "POST"])
 def login():
     if "user_id" in session:
-        return redirect(url_for("admin_dashboard") if session["role"] == "admin" else url_for("worker_dashboard"))
+        return redirect(url_for("admin_dashboard") if session["role"] in ("admin", "compliance") else url_for("worker_dashboard"))
 
     error = None
     if request.method == "POST":
@@ -95,7 +118,7 @@ def login():
             session["username"] = user["username"]
             session["full_name"] = user["full_name"]
             session["role"] = user["role"]
-            if user["role"] == "admin":
+            if user["role"] in ("admin", "compliance"):
                 return redirect(url_for("admin_dashboard"))
             else:
                 return redirect(url_for("worker_dashboard"))
@@ -116,7 +139,7 @@ def logout():
 @app.route("/worker")
 @login_required
 def worker_dashboard():
-    if session["role"] == "admin":
+    if session["role"] in ("admin", "compliance"):
         return redirect(url_for("admin_dashboard"))
 
     open_session = query(
@@ -130,8 +153,8 @@ def worker_dashboard():
 @app.route("/api/checkin", methods=["POST"])
 @login_required
 def checkin():
-    if session["role"] == "admin":
-        return jsonify({"error": "Admins cannot check in."}), 403
+    if session["role"] != "worker":
+        return jsonify({"error": "Only workers can check in."}), 403
 
     data = request.get_json()
     location_name = (data.get("location_name") or "").strip()
@@ -165,10 +188,14 @@ def checkin():
 @app.route("/api/checkout", methods=["POST"])
 @login_required
 def checkout():
-    if session["role"] == "admin":
-        return jsonify({"error": "Admins cannot check out."}), 403
+    if session["role"] != "worker":
+        return jsonify({"error": "Only workers can check out."}), 403
 
     data = request.get_json()
+    work_summary = (data.get("work_summary") or "").strip()
+    if not work_summary:
+        return jsonify({"error": "Please describe what you did today before checking out."}), 400
+
     open_session = query(
         "SELECT * FROM attendance WHERE user_id = %s AND checkout IS NULL ORDER BY checkin DESC LIMIT 1",
         (session["user_id"],),
@@ -182,8 +209,8 @@ def checkout():
     checkout_time = now_wib()
 
     query(
-        "UPDATE attendance SET checkout = %s, checkout_lat = %s, checkout_lng = %s WHERE id = %s",
-        (checkout_time, lat, lng, open_session["id"]),
+        "UPDATE attendance SET checkout = %s, checkout_lat = %s, checkout_lng = %s, work_summary = %s WHERE id = %s",
+        (checkout_time, lat, lng, work_summary, open_session["id"]),
         commit=True
     )
     return jsonify({"success": True, "message": "Checked out successfully."})
@@ -209,7 +236,7 @@ def status():
 # ─── Admin ────────────────────────────────────────────────────────────────────
 
 @app.route("/admin")
-@admin_required
+@report_access_required
 def admin_dashboard():
     filter_month = request.args.get("month", "")   # format: "YYYY-MM"
     filter_worker = request.args.get("worker", "")
@@ -245,11 +272,27 @@ def admin_dashboard():
 
     return render_template("admin.html", records=records,
                            filter_month=filter_month, filter_worker=filter_worker,
-                           all_workers=all_workers)
+                           all_workers=all_workers,
+                           is_compliance=(session.get("role") == "compliance"))
+
+
+@app.route("/api/compliance/<int:record_id>", methods=["POST"])
+@compliance_required
+def toggle_compliance(record_id):
+    data = request.get_json() or {}
+    value = bool(data.get("compliance"))
+    rowcount = query(
+        "UPDATE attendance SET compliance = %s WHERE id = %s",
+        (value, record_id),
+        commit=True
+    )
+    if not rowcount:
+        return jsonify({"error": "Record not found."}), 404
+    return jsonify({"success": True, "compliance": value})
 
 
 @app.route("/admin/export")
-@admin_required
+@report_access_required
 def export_excel():
     filter_month = request.args.get("month", "")
     filter_worker = request.args.get("worker", "")
@@ -283,7 +326,8 @@ def export_excel():
     ws.title = "Attendance"
 
     headers = ["#", "Full Name", "Username", "Check-In (WIB)", "Check-Out (WIB)",
-               "Duration", "Location", "Check-In GPS", "Check-Out GPS", "IP Address"]
+               "Duration", "Work Summary", "Location", "Check-In GPS", "Check-Out GPS",
+               "IP Address", "Compliance"]
     header_fill = PatternFill("solid", fgColor="1E3A5F")
     header_font = Font(color="FFFFFF", bold=True)
 
@@ -299,10 +343,12 @@ def export_excel():
     ws.column_dimensions["D"].width = 22
     ws.column_dimensions["E"].width = 22
     ws.column_dimensions["F"].width = 12
-    ws.column_dimensions["G"].width = 22
-    ws.column_dimensions["H"].width = 30
+    ws.column_dimensions["G"].width = 36
+    ws.column_dimensions["H"].width = 22
     ws.column_dimensions["I"].width = 30
-    ws.column_dimensions["J"].width = 18
+    ws.column_dimensions["J"].width = 30
+    ws.column_dimensions["K"].width = 18
+    ws.column_dimensions["L"].width = 12
 
     for i, r in enumerate(records, 1):
         checkin_str  = r["checkin"].strftime("%Y-%m-%d %H:%M:%S")  if r["checkin"]  else ""
@@ -319,8 +365,11 @@ def export_excel():
         ci_gps = f"https://maps.google.com/?q={r['checkin_lat']},{r['checkin_lng']}"   if (r["checkin_lat"]  and r["checkin_lng"])  else ""
         co_gps = f"https://maps.google.com/?q={r['checkout_lat']},{r['checkout_lng']}" if (r["checkout_lat"] and r["checkout_lng"]) else ""
 
+        compliance_val = 1 if r.get("compliance") else 0
+
         row_data = [i, r["full_name"], r["username"], checkin_str, checkout_str,
-                    duration, r["location_name"], ci_gps, co_gps, r["ip_address"]]
+                    duration, r.get("work_summary") or "—", r["location_name"], ci_gps, co_gps,
+                    r["ip_address"], compliance_val]
         for col, val in enumerate(row_data, 1):
             cell = ws.cell(row=i + 1, column=col, value=val)
             cell.alignment = Alignment(horizontal="left")
@@ -355,7 +404,7 @@ def setup():
                 username VARCHAR(80) UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 full_name TEXT NOT NULL,
-                role VARCHAR(10) NOT NULL CHECK (role IN ('admin','worker'))
+                role VARCHAR(12) NOT NULL CHECK (role IN ('admin','worker','compliance'))
             )
         """)
         cur.execute("""
@@ -370,7 +419,9 @@ def setup():
                 checkout_lat FLOAT,
                 checkout_lng FLOAT,
                 ip_address TEXT,
-                user_agent TEXT
+                user_agent TEXT,
+                work_summary TEXT,
+                compliance BOOLEAN DEFAULT FALSE
             )
         """)
         conn.commit()
