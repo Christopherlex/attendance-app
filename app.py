@@ -194,7 +194,7 @@ def checkout():
     data = request.get_json()
     work_summary = (data.get("work_summary") or "").strip()
     if not work_summary:
-        return jsonify({"error": "Please describe what you did today before checking out."}), 400
+        return jsonify({"error": "Mohon isi output hari ini sebelum check-out."}), 400
 
     open_session = query(
         "SELECT * FROM attendance WHERE user_id = %s AND checkout IS NULL ORDER BY checkin DESC LIMIT 1",
